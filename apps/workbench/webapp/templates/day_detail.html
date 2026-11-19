@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+{% block title %}{{ day.report_date }} · 工作中台{% endblock %}
+{% block content %}
+<div class="breadcrumb"><a href="{{ url_for('web.calendar_page', month=day.report_date[:7]) }}">{{ day.report_date[:7] }}</a><span>/</span><span>{{ day.report_date }}</span></div>
+<section class="page-heading page-heading--detail">
+  <div>
+    <p class="eyebrow">日期详情</p>
+    <h1>{{ day.report_date }}</h1>
+  </div>
+  <span class="work-mode work-mode--{% if day.is_onsite %}onsite{% else %}remote{% endif %}">{{ day.onsite_label }}</span>
+</section>
+
+<dl class="fact-strip">
+  <div><dt>主客户</dt><dd>{{ day.customer_name }}</dd></div>
+  <div><dt>索引时间</dt><dd>{{ day.indexed_at }}</dd></div>
+  {% if day.is_date_attribution %}<div><dt>实际补交日</dt><dd>{{ day.attribution_source_date }}</dd></div>{% endif %}
+  <div><dt>失败留痕</dt><dd>{% if day.artifact_count %}含有失败留痕（{{ day.artifact_count }} 个）{% else %}无{% endif %}</dd></div>
+</dl>
+
+<section class="section-block" aria-labelledby="status-title">
+  <div class="section-heading"><h2 id="status-title">提交状态</h2><span>是否提交与结果依据</span></div>
+  <div class="status-board">
+    {% for row in day.status_rows %}
+      <div class="status-board__item">
+        <strong class="status-board__name">{{ row.step_label }}</strong>
+        <div class="status-board__fact">
+          <span>提交状态</span>
+          <strong class="status-text status-text--{{ row.status }}"><i class="status-dot status-{{ row.status }}" aria-hidden="true"></i>{{ row.submission_label }}</strong>
+        </div>
+        <div class="status-board__fact">
+          <span>结果依据</span>
+          <strong>{{ row.verification_label }}</strong>
+        </div>
+        <div class="status-board__fact">
+          <span>记录数量</span>
+          <strong>{{ row.count }} 条</strong>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+{% if day.is_date_attribution %}
+<section class="section-block date-attribution-panel" data-date-attribution-revoke data-target-date="{{ day.report_date }}" data-local-token="{{ local_request_token }}" aria-labelledby="attribution-title">
+  <div class="section-heading"><h2 id="attribution-title">本机补交归属</h2><span>实际 CRM 提交：{{ day.attribution_source_date }}</span></div>
+  <p class="notice">此日期仅承载 {{ day.attribution_source_date }} 的补交显示。不会从这里补交、校验 CRM、修改工时或调整提交记录。</p>
+  <button class="command-button command-button--quiet" type="button" data-revoke-date-attribution>撤销日期归属</button>
+  <p class="action-message" data-date-attribution-revoke-message role="status" aria-live="polite"></p>
+</section>
+{% else %}
+<section class="section-block action-panel" aria-labelledby="action-title" data-action-panel data-report-date="{{ day.report_date }}" data-is-onsite="{{ 'true' if day.is_onsite else 'false' }}" data-auto-source-sync="{{ 'true' if auto_source_sync else 'false' }}" data-local-token="{{ local_request_token }}">
+  <div class="section-heading"><h2 id="action-title">补交与 CRM 校验</h2><span>源文件同步需确认；校验只读执行</span></div>
+  <div class="command-groups">
+    <div class="command-group" aria-label="补交操作">
+      <button class="command-button" type="button" data-source-sync-action>从源文件同步</button>
+      <button class="command-button" type="button" data-preview-action="daily_log">补交日报</button>
+      {% if day.is_onsite %}<button class="command-button" type="button" data-preview-action="onsite_service">补交外勤服务</button>{% endif %}
+      <button class="command-button" type="button" data-preview-action="remote_workorder">新建远程工单</button>
+    </div>
+    <div class="command-group" aria-label="只读复核">
+      <button class="command-button command-button--quiet" type="button" data-verify-step="daily_log">校验日报 CRM</button>
+      {% if day.is_onsite %}<button class="command-button command-button--quiet" type="button" data-verify-step="service_record">校验外勤服务 CRM</button>{% endif %}
+      {% if remote_verification_targets|length > 1 %}
+      <label>远程工单复核对象
+        <select data-verification-target="remote_workorder">
+          <option value="">请选择客户和工单</option>
+          {% for target in remote_verification_targets %}<option value="{{ target.unique_key }}">{{ target.customer }} · {{ target.workorder_id or '待查编号' }}{% if target.verification_conflict %}（需核对来源记录）{% endif %}</option>{% endfor %}
+        </select>
+      </label>
+      {% endif %}
+      <button class="command-button command-button--quiet" type="button" data-verify-step="remote_workorder">校验远程工单 CRM</button>
+    </div>
+  </div>
+  {% if verification_error %}<p class="notice">{{ verification_error }}</p>{% endif %}
+  {% for target in remote_verification_targets %}{% if target.verification_conflict %}<p class="notice">{{ target.customer }} · {{ target.workorder_id or '待查编号' }}：{{ target.verification_conflict }}</p>{% endif %}{% endfor %}
+  <p class="action-message" data-action-message role="status" aria-live="polite"></p>
+  <p class="action-message inline-verification-result" data-inline-verification-result role="status" aria-live="polite"></p>
+</section>
+{% endif %}
+
+<dialog class="confirm-dialog confirm-dialog--source-sync" data-source-sync-dialog aria-labelledby="source-sync-title">
+  <div class="confirm-dialog__header">
+    <div><p class="eyebrow">源文件同步</p><h2 id="source-sync-title">核对并选择本次补交</h2></div>
+    <button class="icon-command" type="button" data-close-dialog aria-label="关闭" title="关闭">×</button>
+  </div>
+  <div class="confirm-dialog__body">
+    <p class="notice">实时读取对应日期的日报.md。日报和当日必选主服务不能取消；可选远程工单默认不选。对已选远程工单逐项核对工时与处理状态后，再确认排队。</p>
+    <div data-source-sync-list></div>
+    <p class="notice" data-source-sync-total aria-live="polite"></p>
+    <p class="action-message" data-source-sync-message role="status" aria-live="polite"></p>
+  </div>
+  <div class="confirm-dialog__footer"><button class="command-button" type="button" data-confirm-source-sync>确认并排队</button></div>
+</dialog>
+
+<dialog class="confirm-dialog" data-confirm-dialog aria-labelledby="confirm-dialog-title">
+  <div class="confirm-dialog__header">
+    <div><p class="eyebrow">提交确认</p><h2 id="confirm-dialog-title">核对执行内容</h2></div>
+    <button class="icon-command" type="button" data-close-dialog aria-label="关闭" title="关闭">×</button>
+  </div>
+  <div class="confirm-dialog__body" data-preview-list></div>
+  <p class="action-message" data-dialog-message role="status" aria-live="polite"></p>
+</dialog>
+
+<dialog class="confirm-dialog" data-manual-override-dialog aria-labelledby="manual-override-title">
+  <div class="confirm-dialog__header">
+    <div><p class="eyebrow">人工显示更正</p><h2 id="manual-override-title" data-manual-override-title>确认人工更正</h2></div>
+    <button class="icon-command" type="button" data-close-dialog aria-label="关闭" title="关闭">×</button>
+  </div>
+  <div class="confirm-dialog__body">
+    <div class="preview-facts" data-manual-override-facts></div>
+    <p class="notice" data-manual-override-boundary></p>
+    <p class="action-message" data-manual-override-message role="status" aria-live="polite"></p>
+  </div>
+  <div class="confirm-dialog__footer"><button class="command-button" type="button" data-confirm-manual-override>确认人工更正</button></div>
+</dialog>
+
+<dialog class="confirm-dialog confirm-dialog--compact" data-delete-crm-verification-dialog aria-labelledby="delete-crm-verification-title">
+  <div class="confirm-dialog__header">
+    <div><p class="eyebrow">本机审计清理</p><h2 id="delete-crm-verification-title">删除校验失败记录</h2></div>
+    <button class="icon-command" type="button" data-close-dialog aria-label="关闭" title="关闭">×</button>
+  </div>
+  <div class="confirm-dialog__body">
+    <div class="preview-facts" data-delete-crm-verification-facts></div>
+    <p class="notice">仅删除本机 Web 中这一条失败的 CRM 只读校验审计项，不会修改 CRM、日报、提交历史、待补交队列或失败留痕文件。</p>
+    <p class="action-message" data-delete-crm-verification-message role="status" aria-live="polite"></p>
+  </div>
+  <div class="confirm-dialog__footer"><button class="command-button" type="button" data-confirm-delete-crm-verification>确认删除</button></div>
+</dialog>
+
+<dialog class="confirm-dialog" data-remote-hours-dialog aria-labelledby="remote-hours-title">
+  <div class="confirm-dialog__header">
+    <div><p class="eyebrow">CRM 工时修改</p><h2 id="remote-hours-title">修改远程工单工时</h2></div>
+    <button class="icon-command" type="button" data-close-dialog aria-label="关闭" title="关闭">×</button>
+  </div>
+  <div class="confirm-dialog__body">
+    <div class="preview-facts" data-remote-hours-facts></div>
+    <label class="field-control">目标工时（小时）<input data-remote-hours-input type="number" min="0.5" max="8" step="0.5" inputmode="decimal" required></label>
+    <p class="notice">确认后立即排队修改 CRM。系统会先核对工单类型、客户、日期和原工时；CRM 回查成功前，表格保持显示原工时。</p>
+    <p class="action-message" data-remote-hours-message role="status" aria-live="polite"></p>
+  </div>
+  <div class="confirm-dialog__footer"><button class="command-button" type="button" data-confirm-remote-hours>确认修改 CRM</button></div>
+</dialog>
+
+<dialog class="confirm-dialog confirm-dialog--compact" data-remote-binding-dialog aria-labelledby="remote-binding-title">
+  <div class="confirm-dialog__header">
+    <div><p class="eyebrow">只读关联复核</p><h2 id="remote-binding-title">修正远程工单关联</h2></div>
+    <button class="icon-command" type="button" data-close-dialog aria-label="关闭" title="关闭">×</button>
+  </div>
+  <div class="confirm-dialog__body">
+    <div class="preview-facts" data-remote-binding-facts></div>
+    <label class="field-control">新远程工单编号<input data-remote-binding-input type="text" inputmode="text" autocomplete="off" placeholder="JSFW20260712-099" required></label>
+    <p class="notice">只读核对新工单的类型、客户、服务日期和工时；通过后只修改本地关联，不修改 CRM 工单内容。</p>
+    <p class="action-message" data-remote-binding-message role="status" aria-live="polite"></p>
+  </div>
+  <div class="confirm-dialog__footer"><button class="command-button" type="button" data-confirm-remote-binding>只读核验并关联</button></div>
+</dialog>
+
+<section class="section-block" aria-labelledby="records-title">
+  <details class="evidence-details">
+    <summary id="records-title"><span>提交证据记录（{{ day.submissions|length }} 条）</span><span>展开查看</span></summary>
+    {% if day.submissions %}
+      <div class="table-wrap">
+      <table>
+        <thead><tr><th>类型</th><th>客户</th><th>提交状态</th><th>结果依据</th><th>证据来源</th><th>CRM 编号</th><th>工时</th><th>记录时间</th><th>操作</th></tr></thead>
+        <tbody>
+        {% for item in day.submissions %}
+          <tr{% if item.step == 'remote_workorder' %} data-remote-hours-row data-content-digest="{{ item.content_digest }}" data-workorder-id="{{ item.remote_hours_workorder_id or item.workorder_id or '' }}" data-customer="{{ item.crm_customer or item.service_customer or '' }}" data-current-hours="{{ item.service_hours if item.service_hours is not none else '' }}"{% if item.remote_hour_job_id %} data-remote-hours-job="{{ item.remote_hour_job_id }}" data-remote-hours-job-api="{{ item.remote_hour_job_api }}" data-remote-hours-job-status="{{ item.remote_hour_job_status }}"{% endif %}{% endif %}>
+            <td data-label="类型">{{ item.step_label }}</td>
+            <td data-label="客户"{% if item.step == 'remote_workorder' %} data-remote-hours-customer{% endif %}>{{ item.crm_customer or item.service_customer or '—' }}</td>
+            <td data-label="提交状态"><span class="status-text status-text--{{ item.status }}"><i class="status-dot status-{{ item.status }}" aria-hidden="true"></i>{{ item.submission_label }}</span></td>
+            <td data-label="结果依据">{{ item.verification_label }}</td>
+            <td data-label="证据来源">{{ item.evidence_label }}</td>
+            <td data-label="CRM 编号"{% if item.step == 'remote_workorder' %} data-remote-hours-workorder{% endif %}>
+              {% if item.workorder_id %}<span class="crm-identifier">工单：{{ item.workorder_id }}</span>{% endif %}
+              {% if item.service_record_id %}<span class="crm-identifier">服务记录：{{ item.service_record_id }}</span>{% endif %}
+              {% if not item.workorder_id and not item.service_record_id %}—{% endif %}
+            </td>
+            <td data-label="工时">
+              {% if item.remote_hours_editable %}
+                <button class="table-cell-editor" type="button" data-remote-hours-edit data-content-digest="{{ item.content_digest }}" data-workorder-id="{{ item.remote_hours_workorder_id or '' }}" data-current-hours="{{ item.service_hours if item.service_hours is not none else '' }}" data-base-hours="{{ item.remote_hours_base_service_hours if item.remote_hours_base_service_hours is not none else '' }}" data-customer="{{ item.crm_customer or item.service_customer or '' }}" data-can-sync="{% if item.remote_hours_can_sync %}true{% else %}false{% endif %}" data-sync-reason="{{ item.remote_hours_sync_reason }}" aria-label="修改{{ item.crm_customer or item.service_customer or '远程支持' }}工时">
+                  {% if item.service_hours is not none %}<strong data-remote-hours-value>{{ item.service_hours }} 小时</strong>{% else %}<span data-remote-hours-value>填写工时</span>{% endif %}
+                  <small class="remote-hour-status" data-remote-hours-status>{% if item.remote_hour_job_status in ['queued', 'running'] and item.remote_hour_target_hours is not none %}{{ item.service_hours }} → {{ item.remote_hour_target_hours }} 小时 · CRM 同步中{% elif item.remote_hour_job_status_label %}{{ item.remote_hour_job_status_label }}{% elif item.remote_hour_sync_label %}{{ item.remote_hour_sync_label }}{% endif %}</small>
+                </button>
+              {% elif item.service_hours is not none %}
+                <div class="remote-hour-display">
+                  <strong data-remote-hours-value>{{ item.service_hours }} 小时</strong>
+                  <small class="remote-hour-status" data-remote-hours-status>{% if item.remote_hour_job_status in ['queued', 'running'] and item.remote_hour_target_hours is not none %}{{ item.service_hours }} → {{ item.remote_hour_target_hours }} 小时 · CRM 同步中{% elif item.remote_hour_job_status_label %}{{ item.remote_hour_job_status_label }}{% elif item.remote_hour_sync_label %}{{ item.remote_hour_sync_label }}{% endif %}</small>
+                  {% if item.remote_hour_conflict_message %}<small class="remote-hour-error">{{ item.remote_hour_conflict_message }}</small>{% endif %}
+                </div>
+              {% else %}—{% endif %}
+            </td>
+            <td data-label="记录时间">{{ item.crm_verified_at or item.local_recorded_at or '—' }}</td>
+            <td data-label="操作">
+              <div class="table-actions">
+                {% if item.manual_status_editable %}
+                  <button class="small-command small-command--quiet" type="button" data-manual-override-step="{{ item.step }}" data-manual-override-label="{{ item.step_label }}" data-manual-override-mode="{% if item.manual_override %}revoke{% else %}apply{% endif %}">{% if item.manual_override %}撤销显示更正{% else %}修改显示{% endif %}</button>
+                {% endif %}
+                {% if item.remote_hours_alias_confirmable %}
+                  <button class="small-command" type="button" data-confirm-customer-alias data-job-id="{{ item.remote_hour_job_id }}">确认同一客户</button>
+                {% endif %}
+                {% if item.remote_hours_binding_repairable %}
+                  <button class="small-command small-command--quiet" type="button" data-repair-workorder-binding data-content-digest="{{ item.content_digest }}" data-workorder-id="{{ item.workorder_id or '' }}" data-customer="{{ item.crm_customer or item.service_customer or '' }}">修正工单关联</button>
+                {% endif %}
+                {% if item.crm_verification_failure_deletable %}
+                  <button class="small-command small-command--quiet" type="button" data-delete-crm-verification data-job-id="{{ item.crm_verification_job_id }}" data-step-label="{{ item.step_label }}">删除校验失败记录</button>
+                {% endif %}
+                {% if item.remote_hours_lock_reason and not item.remote_hours_alias_confirmable and not item.remote_hours_binding_repairable and not item.crm_verification_failure_deletable %}
+                  <span class="table-note">{{ item.remote_hours_lock_reason }}</span>
+                {% elif not item.manual_status_editable and not item.remote_hours_alias_confirmable and not item.remote_hours_binding_repairable and not item.crm_verification_failure_deletable %}
+                  <span class="table-note">—</span>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    {% else %}<p class="empty-state">暂无成功提交回执，当前显示未提交。</p>{% endif %}
+  </details>
+</section>
+
+{% if day.artifacts %}
+<section class="section-block" aria-labelledby="artifact-title">
+  <details class="artifact-details">
+    <summary id="artifact-title"><span>失败留痕（{{ day.artifacts|length }} 个）</span><span>展开查看</span></summary>
+    <ul class="artifact-list">
+    {% for item in day.artifacts %}
+      <li><span class="file-kind">{{ item.file_type }}</span><strong>{{ item.file_name }}</strong><span>{{ item.step_label }}</span><span>{{ item.size_label }}</span>{% if item.protected_by_pending %}<span class="protected-label">待补交保护</span>{% endif %}</li>
+    {% endfor %}
+    </ul>
+  </details>
+</section>
+{% endif %}
+{% endblock %}

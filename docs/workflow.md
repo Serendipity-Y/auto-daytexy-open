@@ -10,7 +10,23 @@
 
 中台按日期索引日报、提交历史和待补交记录。月历可以筛选问题日期，打开当天详情核对原文、任务状态和已有回执。SQLite 用于中台索引，日常归档应保留 Markdown 和提交记录源文件。
 
-需要接入纷享销客时，使用有相应权限的账号，并先确认所在组织允许这种集成。各租户的表单、字段和工单分类可能不同，应在获准的环境核对实际表单及写入权限。
+### 接入纷享销客
+
+日常生成日报和浏览中台默认使用本地数据。需要提交或复核 CRM 时，在启动日报 CLI 或中台的同一个终端设置 `FXIAOKE_ENABLED=1`。各租户的表单字段、负责人和工单分类可能不同，请用获准的账号在测试环境核对实际权限和表单。
+
+安装浏览器后，可用登录维护命令打开可见浏览器完成登录或扫码。中台重启后会读取启动环境中的配置。
+
+```bash
+python -m playwright install chromium
+export FXIAOKE_ENABLED=1
+python -m apps.reports.daily_report --fxiaoke-login-check
+```
+
+负责人通过 `FXIAOKE_SERVICE_OWNER` 指定。把租户配置示例复制到本机私有目录，填写管理员确认的表单字段、记录类型和选项标识。将 `FXIAOKE_CRM_CONFIG_PATH` 指向该文件，或保存在默认位置 `~/.config/auto-daytexy/fxiaoke_tenant.json`。示例保留空值。外勤记录的列表查重需要实际开始时间字段，创建远程工单需要对应记录类型、字段、选项名称和标识。修改配置后重新运行 CLI 或重启中台。[租户配置示例](../examples/fxiaoke-crm.example.json)
+
+创建远程工单还需要本机工单类别文件。可复制公开的预览分类清单，按照实际租户修改分类名称与选项标识，然后将 `FXIAOKE_SERVICE_CATEGORY_CONFIG_PATH` 指向本机文件。账户、登录态与实际表单配置均保存在仓库外。[预览分类清单](../fxiaoke_remote_workorder_categories.json)
+
+### 提交与复核
 
 日常交互流程为
 
@@ -25,10 +41,14 @@
 
 | 配置项 | 作用 |
 | --- | --- |
-| `DAILY_REPORT_PATH` | 默认日报文件。也可用日报命令的 `--path` 指定。 |
+| `DAILY_REPORT_PATH` | 默认日报文件为 `~/Documents/auto-daytexy/日报.md`。也可用日报命令的 `--path` 指定。 |
 | `WEEKLY_REPORT_PATH` | 默认周报文件。未配置时，周报写到日报同目录的 `周报.md`。 |
 | `WEB_MANAGER_REPORT_PATH` | 中台读取的日报源文件。日常使用时设为和 CLI 相同的文件。 |
 | `WEB_MANAGER_DATABASE_PATH` | 中台 SQLite 索引的位置。 |
+| `FXIAOKE_ENABLED` | 设为 `1` 启用日报和工作中台的 CRM 操作。 |
+| `FXIAOKE_SERVICE_OWNER` | CRM 服务单的默认负责人，填写该租户实际可选的账号名称。 |
+| `FXIAOKE_CRM_CONFIG_PATH` | CRM 表单和路由映射的本机 JSON 路径。 |
+| `FXIAOKE_SERVICE_CATEGORY_CONFIG_PATH` | 创建远程工单使用的本机分类映射。 |
 | `DAILY_REPORT_API_KEY`、`WEEKLY_REPORT_API_KEY` | 日报润色和周报生成的模型凭据。周报也会读取日报凭据。 |
 | `DAILY_REPORT_BASE_URL`、`WEEKLY_REPORT_BASE_URL` | 模型接口地址。默认接入硅基流动。 |
 | `DAILY_REPORT_MODEL`、`WEEKLY_REPORT_MODEL` | 覆盖日报和周报使用的模型。 |

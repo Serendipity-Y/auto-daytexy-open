@@ -1,0 +1,35 @@
+# Python environments and caches
+.venv/
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.DS_Store
+
+# Local credentials, CRM browser state, and report data
+.env
+.env.*
+*credentials*.json
+*private*.json
+fxiaoke_crm.json
+fxiaoke_tenant.json
+fxiaoke_service_categories.json
+knowledge_base.json
+.fxiaoke_storage_state.json
+.fxiaoke_browser_profile/
+daily_report_customer_aliases.json
+daily_report_sales_memory.json
+fxiaoke_failure_artifacts/
+fxiaoke_failure_traces/
+*.jsonl
+*.sqlite
+*.sqlite3
+*.sqlite3-*
+*.db
+日报.md
+周报.md
+周报前瞻.md
+周报前瞻.json
+tmp/
+tmp_*.png

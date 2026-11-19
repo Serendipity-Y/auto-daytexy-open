@@ -21,6 +21,8 @@ source .venv/bin/activate
 python -m pip install -r requirements.txt -r requirements-web.txt
 ```
 
+纷享销客集成需要主动启用。本机试用可以从日报和中台开始。
+
 ### 预览一篇日报
 
 用没有模型凭据的新环境运行这条命令，可以体验结构化输入的本地整理。已有模型凭据时，预览也可能调用模型。
@@ -64,4 +66,16 @@ python -m apps.reports.weekly_report --preview-only --no-clipboard \
 
 周一至周四运行时统计上周，周五至周日运行时统计本周。只想体验时，可以复制虚构日报，把日期改到目标周后用作输入。确认预览后，去掉 `--preview-only` 并按提示保存。
 
-模型处理时，请求可能包含本次输入和用来参考格式的历史报告。使用真实工作内容前，请确认模型服务符合所在组织的数据使用要求。常用配置和 CRM 确认流程见[日常使用](docs/workflow.md)。
+模型处理时，请求可能包含本次输入和用来参考格式的历史报告。使用真实工作内容前，请确认模型服务符合所在组织的数据使用要求。常用配置、纷享销客接入及提交确认流程见[日常使用](docs/workflow.md)。
+
+## 本地检查
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+测试使用虚构日报和模拟模型响应。
+
+## 许可证
+
+本项目使用 [MIT 许可证](LICENSE)。

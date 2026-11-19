@@ -1,0 +1,6 @@
+-c requirements-security.txt
+openai>=1.0.0
+pyperclip>=1.8.2
+playwright>=1.58.0
+ddddocr>=1.6.1
+prompt_toolkit>=3.0.0

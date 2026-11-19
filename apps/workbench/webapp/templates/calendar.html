@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+{% block title %}{{ month_title }} · 工作中台{% endblock %}
+{% block content %}
+<section class="page-heading">
+  <div>
+    <p class="eyebrow">历史台账</p>
+    <h1>{{ month_title }}</h1>
+  </div>
+  <div class="page-heading__actions page-heading__actions--calendar" data-report-sync-center>
+    <div class="daily-utility-links" aria-label="日报管理工具">
+      <a class="command-button command-button--quiet" href="{{ url_for('web.jobs_page') }}">任务</a>
+      <a class="command-button command-button--quiet" href="{{ url_for('web.artifacts_page') }}">留痕</a>
+      <button class="command-button command-button--quiet" type="button" data-report-sync-open-dialog>日报扫描补交</button>
+      <button class="command-button command-button--quiet" type="button" data-service-mode-filter-open>服务方式筛选</button>
+    </div>
+    {% if issues_only %}
+      <a class="command-button command-button--quiet" href="{{ full_calendar_url }}">显示完整月历</a>
+    {% else %}
+      <a class="command-button command-button--quiet" href="{{ issues_only_url }}">仅看问题日期</a>
+    {% endif %}
+    <div class="month-switcher" aria-label="月份切换">
+      <a class="icon-command" href="{{ previous_month_url }}" aria-label="上个月" title="上个月">‹</a>
+      <span class="month-switcher__current">{{ month }}</span>
+      <a class="icon-command" href="{{ next_month_url }}" aria-label="下个月" title="下个月">›</a>
+    </div>
+  </div>
+</section>
+
+{% if not issues_only %}
+<div class="summary-line summary-line--calendar">
+  <span>已索引 <strong>{{ indexed_count }}</strong> 天</span>
+  <div class="month-work-summary" data-month-work-summary aria-label="{{ month_title }}工作统计与日历安排">
+    <div class="month-work-summary__group" aria-label="个人台账统计">
+      <span class="month-work-summary__group-label">个人台账</span>
+      <span data-month-summary-onsite="{{ month_work_summary.onsite_days }}">外勤 <strong>{{ month_work_summary.onsite_days }}</strong> 天</span>
+      <span data-month-summary-company="{{ month_work_summary.company_office_days }}">公司办公 <strong>{{ month_work_summary.company_office_days }}</strong> 天{% if month_work_summary.company_meeting_days or month_work_summary.company_activity_days %}<small>（会议 {{ month_work_summary.company_meeting_days }} / 活动 {{ month_work_summary.company_activity_days }}）</small>{% endif %}</span>
+      <span data-month-summary-leave="{{ month_work_summary.leave_days }}">请假 <strong>{{ month_work_summary.leave_days }}</strong> 天</span>
+    </div>
+    <div class="month-work-summary__group month-work-summary__group--calendar" aria-label="官方日历安排">
+      <span class="month-work-summary__group-label">官方日历</span>
+      <span data-month-summary-adjusted-rest="{{ month_work_summary.adjusted_rest_days }}">调休 <strong>{{ month_work_summary.adjusted_rest_days }}</strong> 天</span>
+      <span data-month-summary-weekend-rest="{{ month_work_summary.weekend_rest_days }}">双休 <strong>{{ month_work_summary.weekend_rest_days }}</strong> 天</span>
+      <span data-month-summary-statutory-holiday="{{ month_work_summary.statutory_holiday_days }}">法定节假日 <strong>{{ month_work_summary.statutory_holiday_days }}</strong> 天</span>
+      <span data-month-summary-adjusted-workday="{{ month_work_summary.adjusted_workday_days }}">调休上班 <strong>{{ month_work_summary.adjusted_workday_days }}</strong> 天</span>
+    </div>
+  </div>
+</div>
+{% if not issues_only and not adjusted_rest_schedule_available %}
+  <p class="table-note" data-adjusted-rest-schedule-unavailable>{{ month[:4] }} 年的国务院调休安排尚未加入本机日历表；当前按周六、周日标记双休，年度公告发布后需补录调休上班日。</p>
+{% endif %}
+{% endif %}
+
+{% if issues_only %}
+  <section class="issue-list-panel" data-issue-list aria-labelledby="month-issues-title">
+    <div class="section-heading">
+      <h2 id="month-issues-title">{{ month_title }} · 需处理日期</h2>
+      <span>仅统计截至今天的工作日</span>
+    </div>
+    <nav class="issue-type-filter" data-issue-type-filter aria-label="问题类型筛选">
+      {% for filter in issue_type_filters %}
+        <a class="issue-type-filter__item{% if filter.active %} is-active{% endif %}" data-issue-type="{{ filter.key }}" href="{{ filter.url }}">{{ filter.label }}<span>{{ filter.count }}</span></a>
+      {% endfor %}
+    </nav>
+    {% if month_issues %}
+      <ul class="month-issue-list">
+        {% for issue in month_issues %}
+          <li>
+            {% if issue.has_record %}
+              <a class="month-issue-list__row month-issue-list__link" href="{{ url_for('web.day_detail', date=issue.report_date) }}#action-panel" aria-label="查看 {{ issue.report_date }} {{ issue.customer_name }} 的详情">
+                <time datetime="{{ issue.report_date }}">{{ issue.report_date }}</time>
+                <div class="month-issue-list__main">
+                  <span class="month-issue-list__group">{{ issue.group_label }}</span>
+                  <strong>{{ issue.customer_name }}</strong>
+                  <span class="status-text status-text--{{ issue.status }}"><i class="status-dot status-{{ issue.status }}" aria-hidden="true"></i>{{ issue.detail }}</span>
+                </div>
+                <span class="month-issue-list__action">查看详情</span>
+              </a>
+            {% else %}
+              <div class="month-issue-list__row">
+                <time datetime="{{ issue.report_date }}">{{ issue.report_date }}</time>
+                <div class="month-issue-list__main">
+                  <span class="month-issue-list__group">{{ issue.group_label }}</span>
+                  <strong>{{ issue.customer_name }}</strong>
+                  <span class="status-text status-text--{{ issue.status }}"><i class="status-dot status-{{ issue.status }}" aria-hidden="true"></i>{{ issue.detail }}</span>
+                </div>
+                <span class="month-issue-list__hint">先保存日报</span>
+              </div>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty-state">{% if month_issue_total %}当前类型没有需处理的工作日。{% else %}该月份截至今天没有需处理的工作日。{% endif %}</p>
+    {% endif %}
+  </section>
+{% else %}
+  <section class="calendar-panel" data-local-token="{{ local_request_token }}" aria-label="{{ month_title }}日历">
+    <div class="calendar-weekdays" aria-hidden="true">
+      <span>周一</span><span>周二</span><span>周三</span><span>周四</span><span>周五</span><span>周六</span><span>周日</span>
+    </div>
+    <div class="calendar-grid">
+      {% for week in weeks %}
+        <div class="calendar-week">
+          {% for cell in week %}
+            <article class="day-cell{% if cell.record %} day-cell--has-record{% endif %}{% if cell.calendar_status %} day-cell--calendar-status{% endif %}{% if cell.record and cell.record.is_date_attribution %} day-cell--attributed{% endif %}{% if cell.record and cell.record.attribution_target_date %} day-cell--attribution-source{% endif %}{% if not cell.in_month %} day-cell--outside{% endif %}{% if cell.is_today %} day-cell--today{% endif %}"{% if not cell.is_occupied and cell.is_workday and (cell.in_month or cell.is_before_month) %} data-date-attribution-target="{{ cell.date }}"{% endif %}>
+              {% if cell.record %}
+                {% if cell.record.attribution_target_date %}
+                  <div class="day-cell__attribution-source" aria-label="{{ cell.date }} 的日报已归属到 {{ cell.record.attribution_target_date }}">
+                    <div class="day-cell__date">
+                      <span class="day-cell__date-main">
+                        <span class="day-cell__number">{{ cell.day_number }}</span>
+                        {% if cell.is_today %}<small>今天</small>{% endif %}
+                      </span>
+                      {% if cell.calendar_status and cell.calendar_status.is_automatic %}
+                        <span class="day-cell__calendar-status day-cell__calendar-status--{{ cell.calendar_status.status }}">{{ cell.calendar_status.label }}</span>
+                      {% endif %}
+                    </div>
+                    <div class="day-cell__attribution-reminder">
+                      <p>已补交：{{ cell.record.attribution_target_date[5:] }} 日报</p>
+                      <small>仅本机整理</small>
+                    </div>
+                  </div>
+                {% else %}
+                <a class="day-cell__link" href="{{ url_for('web.day_detail', date=cell.date) }}" aria-label="查看 {{ cell.date }} 的工时与提交状态"{% if not cell.record.is_date_attribution %} draggable="true" data-date-attribution-source="{{ cell.date }}"{% endif %}>
+                  <div class="day-cell__date">
+                    <span class="day-cell__date-main">
+                      <span class="day-cell__number">{{ cell.day_number }}</span>
+                      {% if cell.is_today %}<small>今天</small>{% endif %}
+                    </span>
+                    {% if cell.calendar_status and cell.calendar_status.is_automatic %}
+                      <span class="day-cell__calendar-status day-cell__calendar-status--{{ cell.calendar_status.status }}">{{ cell.calendar_status.label }}</span>
+                    {% endif %}
+                    {% if cell.record.is_onsite %}
+                      <span class="day-cell__service-mode day-cell__service-mode--onsite">外勤</span>
+                    {% else %}
+                      <span class="day-cell__service-mode day-cell__service-mode--remote">远程</span>
+                    {% endif %}
+                  </div>
+                  {% if cell.record.is_date_attribution %}
+                    <span class="day-cell__attribution-badge">补交归属 · 实际提交 {{ cell.record.attribution_source_date[5:] }}</span>
+                  {% endif %}
+                  <p class="day-cell__customer" title="{{ cell.record.customer_name }}">{{ cell.record.customer_name }}</p>
+                  <div class="day-cell__statuses">
+                    {% for row in cell.record.status_rows %}
+                      <span class="status-line status-line--{{ row.status }}"><i class="status-dot status-{{ row.status }}" aria-hidden="true"></i>{{ row.display_text }}</span>
+                    {% endfor %}
+                  </div>
+                </a>
+                {% endif %}
+              {% else %}
+                {% if cell.can_manage_calendar_status %}
+                  <button class="day-cell__calendar-status-control" type="button" data-calendar-day-status-open data-calendar-day-status-date="{{ cell.date }}" data-calendar-day-status="{{ cell.calendar_status.status if cell.calendar_status else '' }}" aria-label="{% if cell.calendar_status %}修改 {{ cell.date }} 的{{ cell.calendar_status.label }}标记{% else %}设置 {{ cell.date }} 的本机日历标记{% endif %}">
+                    <div class="day-cell__date">
+                      <span class="day-cell__date-main">
+                        <span class="day-cell__number">{{ cell.day_number }}</span>
+                        {% if cell.is_today %}<small>今天</small>{% endif %}
+                      </span>
+                    </div>
+                    {% if cell.calendar_status %}
+                      <span class="day-cell__calendar-status day-cell__calendar-status--{{ cell.calendar_status.status }}">{{ cell.calendar_status.label }}</span>
+                      <small class="day-cell__calendar-status-note">{% if cell.calendar_status.is_automatic %}{% if cell.calendar_status.status == 'weekend_rest' %}正常双休日{% else %}国务院年度安排{% endif %} · 自动标记{% else %}仅本机记录{% endif %}</small>
+                    {% else %}
+                      <span class="day-cell__empty">未保存日报 · 点击标记状态</span>
+                    {% endif %}
+                  </button>
+                {% else %}
+                  <div class="day-cell__date">
+                    <span class="day-cell__date-main">
+                      <span class="day-cell__number">{{ cell.day_number }}</span>
+                      {% if cell.is_today %}<small>今天</small>{% endif %}
+                    </span>
+                  </div>
+                  {% if cell.in_month or (cell.is_before_month and cell.is_workday and not cell.is_occupied) %}
+                    <span class="day-cell__empty">{% if cell.in_month %}未保存日报{% else %}跨月可放入补交记录{% endif %}{% if cell.in_month and cell.is_workday %} · 可放入补交记录{% endif %}</span>
+                  {% endif %}
+                {% endif %}
+              {% endif %}
+            </article>
+          {% endfor %}
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  {% if service_mode_results %}
+    <section class="service-mode-ledger" data-service-mode-results aria-labelledby="service-mode-results-title">
+      <div class="service-mode-ledger__heading">
+        <div>
+          <p class="eyebrow">服务方式台账</p>
+          <h2 id="service-mode-results-title">{{ service_mode_results.mode_label }} · {{ service_mode_results.period_label }}</h2>
+        </div>
+        <div class="service-mode-ledger__actions">
+          <span>{{ service_mode_results.range_label }}</span>
+          <a class="text-link" href="{{ service_mode_clear_url }}">清除筛选</a>
+        </div>
+      </div>
+      <dl class="service-mode-ledger__facts">
+        <div><dt>匹配日期</dt><dd>{{ service_mode_results.total_count }}</dd></div>
+        <div><dt>外勤</dt><dd>{{ service_mode_results.onsite_count }}</dd></div>
+        <div><dt>远程</dt><dd>{{ service_mode_results.remote_count }}</dd></div>
+      </dl>
+      {% if service_mode_results.records %}
+        <ul class="service-mode-list">
+          {% for item in service_mode_results.records %}
+            <li>
+              <a href="{{ url_for('web.day_detail', date=item.report_date) }}" aria-label="查看 {{ item.report_date }} {{ item.customer_name }} 的详情">
+                <time datetime="{{ item.report_date }}">{{ item.report_date }}</time>
+                <span class="work-mode work-mode--{{ item.mode }}">{{ item.mode_label }}</span>
+                <strong>{{ item.customer_name }}</strong>
+                <span>查看详情</span>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty-state">该日期范围内没有符合条件的日报。</p>
+      {% endif %}
+    </section>
+  {% endif %}
+
+  <section class="recent-audit" aria-labelledby="recent-audit-title">
+    <div class="recent-audit__heading">
+      <div>
+        <p class="eyebrow">本机状态巡检</p>
+        <h2 id="recent-audit-title">近 7 个工作日巡检</h2>
+      </div>
+      <p>日报优先；不自动提交或发起 CRM 校验。</p>
+    </div>
+    <div class="audit-groups">
+      {% for group in recent_audit %}
+        <section class="audit-group" aria-labelledby="audit-{{ group.key }}">
+          <div class="audit-group__heading">
+            <div>
+              <h3 id="audit-{{ group.key }}">{{ group.title }}</h3>
+              <p>{{ group.description }}</p>
+            </div>
+            <strong aria-label="{{ group["items"]|length }} 项">{{ group["items"]|length }}</strong>
+          </div>
+          {% if group["items"] %}
+            <ul class="audit-list">
+              {% for item in group["items"] %}
+                <li>
+                  <div class="audit-list__main">
+                    <time datetime="{{ item.report_date }}">{{ item.report_date[5:] }}</time>
+                    <div>
+                      <strong>{{ item.customer_name }}</strong>
+                      <span class="status-text status-text--{{ item.status }}"><i class="status-dot status-{{ item.status }}" aria-hidden="true"></i>{{ item.detail }}</span>
+                    </div>
+                  </div>
+                  {% if item.has_record %}
+                    <a href="{{ url_for('web.day_detail', date=item.report_date) }}#action-panel">{{ item.action_label }}</a>
+                  {% else %}
+                    <span class="audit-list__hint">{{ item.action_label }}</span>
+                  {% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="audit-group__empty">暂无</p>
+          {% endif %}
+        </section>
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}
+
+<dialog class="confirm-dialog confirm-dialog--compact report-sync-dialog" data-report-sync-dialog aria-labelledby="report-sync-title">
+  <div class="confirm-dialog__header">
+    <div><p class="eyebrow">日报.md</p><h2 id="report-sync-title">日报扫描补交</h2></div>
+    <button class="icon-command" type="button" data-close-dialog aria-label="关闭" title="关闭">×</button>
+  </div>
+  <div class="confirm-dialog__body">
+    <label class="report-sync-picker__label" for="report-sync-date">补交日期
+      <select id="report-sync-date" data-report-sync-select disabled>
+        <option value="">正在扫描日报.md…</option>
+      </select>
+    </label>
+    <p class="action-message" data-report-sync-message role="status" aria-live="polite"></p>
+  </div>
+  <div class="confirm-dialog__footer">
+    <button class="command-button command-button--quiet" type="button" data-close-dialog>取消</button>
+    <button class="command-button" type="button" data-report-sync-confirm disabled>继续补交</button>
+  </div>
+</dialog>
+
+<dialog class="confirm-dialog confirm-dialog--compact" data-date-attribution-dialog aria-labelledby="date-attribution-title">
+  <div class="confirm-dialog__header">
+    <div><p class="eyebrow">本机日期整理</p><h2 id="date-attribution-title">归属补交日报</h2></div>
+    <button class="icon-command" type="button" data-close-dialog aria-label="关闭" title="关闭">×</button>
+  </div>
+  <div class="confirm-dialog__body">
+    <div class="preview-facts" data-date-attribution-facts></div>
+    <p class="notice">只调整工作中台的日期显示；不会补交、修改 CRM、日报源文件、JSONL 或任务队列。</p>
+    <p class="action-message" data-date-attribution-message role="status" aria-live="polite"></p>
+  </div>
+  <div class="confirm-dialog__footer"><button class="command-button" type="button" data-confirm-date-attribution>确认归属</button></div>
+</dialog>
+
+<dialog class="confirm-dialog confirm-dialog--compact" data-calendar-day-status-dialog aria-labelledby="calendar-day-status-title">
+  <div class="confirm-dialog__header">
+    <div><p class="eyebrow">本机日历</p><h2 id="calendar-day-status-title">日期标记</h2></div>
+    <button class="icon-command" type="button" data-close-dialog aria-label="关闭" title="关闭">×</button>
+  </div>
+  <div class="confirm-dialog__body">
+    <div class="preview-facts" data-calendar-day-status-facts></div>
+    <label class="field-control" for="calendar-day-status-select">当天类型
+      <select id="calendar-day-status-select" data-calendar-day-status-select>
+        {% for option in calendar_day_status_options %}
+          <option value="{{ option.value }}">{{ option.label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <p class="notice">仅调整本机月历与缺日报提醒；不会补交、修改 CRM、日报源文件、JSONL 或任务队列。</p>
+    <p class="action-message" data-calendar-day-status-message role="status" aria-live="polite"></p>
+  </div>
+  <div class="confirm-dialog__footer">
+    <button class="command-button command-button--quiet" type="button" data-close-dialog>取消</button>
+    <button class="command-button command-button--quiet" type="button" data-clear-calendar-day-status hidden>清除状态</button>
+    <button class="command-button" type="button" data-save-calendar-day-status>保存标记</button>
+  </div>
+</dialog>
+
+<dialog class="confirm-dialog confirm-dialog--compact service-mode-filter-dialog" data-service-mode-filter-dialog aria-labelledby="service-mode-filter-title">
+  <div class="confirm-dialog__header">
+    <div><p class="eyebrow">日报台账</p><h2 id="service-mode-filter-title">服务方式筛选</h2></div>
+    <button class="icon-command" type="button" data-close-dialog aria-label="关闭" title="关闭">×</button>
+  </div>
+  <form class="service-mode-filter-form" method="get" action="{{ url_for('web.calendar_page') }}">
+    <input type="hidden" name="month" value="{{ month }}">
+    <div class="confirm-dialog__body">
+      <fieldset class="service-mode-filter-form__mode">
+        <legend>服务方式</legend>
+        <label><input type="radio" name="service_mode" value="all"{% if service_mode_form.mode == "all" %} checked{% endif %}>全部</label>
+        <label><input type="radio" name="service_mode" value="onsite"{% if service_mode_form.mode == "onsite" %} checked{% endif %}>外勤</label>
+        <label><input type="radio" name="service_mode" value="remote"{% if service_mode_form.mode == "remote" %} checked{% endif %}>远程</label>
+      </fieldset>
+      <div class="service-mode-filter-form__grid">
+        <label class="service-mode-filter-form__field" for="service-mode-period">时间范围
+          <select id="service-mode-period" name="service_period" data-service-mode-period>
+            {% for value, label in service_mode_periods.items() %}
+              <option value="{{ value }}"{% if service_mode_form.period == value %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="service-mode-filter-form__field" for="service-mode-anchor" data-service-mode-anchor-field{% if service_mode_form.period == "custom" %} hidden{% endif %}>基准日期
+          <input id="service-mode-anchor" type="date" name="service_anchor" value="{{ service_mode_form.anchor }}">
+        </label>
+      </div>
+      <div class="service-mode-filter-form__grid" data-service-mode-custom-range{% if service_mode_form.period != "custom" %} hidden{% endif %}>
+        <label class="service-mode-filter-form__field" for="service-mode-start">开始日期
+          <input id="service-mode-start" type="date" name="service_start" value="{{ service_mode_form.start }}">
+        </label>
+        <label class="service-mode-filter-form__field" for="service-mode-end">结束日期
+          <input id="service-mode-end" type="date" name="service_end" value="{{ service_mode_form.end }}">
+        </label>
+      </div>
+    </div>
+    <div class="confirm-dialog__footer service-mode-filter-form__footer">
+      <a class="command-button command-button--quiet" href="{{ service_mode_clear_url }}">清除筛选</a>
+      <button class="command-button command-button--quiet" type="button" data-close-dialog>取消</button>
+      <button class="command-button" type="submit">应用筛选</button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}

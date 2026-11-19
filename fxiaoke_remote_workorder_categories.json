@@ -1,0 +1,113 @@
+{
+  "rules": [
+    {
+      "label": "服务申请或投诉",
+      "value": "preview_category_1",
+      "keywords": [
+        "服务申请",
+        "投诉"
+      ]
+    },
+    {
+      "label": "密码找回",
+      "value": "preview_category_2",
+      "keywords": [
+        "密码",
+        "账号找回"
+      ]
+    },
+    {
+      "label": "软件授权处理",
+      "value": "preview_category_3",
+      "keywords": [
+        "授权",
+        "激活",
+        "license"
+      ]
+    },
+    {
+      "label": "产品使用培训",
+      "value": "preview_category_4",
+      "keywords": [
+        "培训",
+        "讲解",
+        "演示",
+        "操作指导"
+      ]
+    },
+    {
+      "label": "硬件故障排查处理",
+      "value": "preview_category_5",
+      "keywords": [
+        "硬盘",
+        "主板",
+        "电源",
+        "硬件损坏",
+        "无法开机",
+        "内存",
+        "ecc",
+        "cpu",
+        "服务器死机",
+        "返厂",
+        "备件"
+      ]
+    },
+    {
+      "label": "安装指导调试",
+      "value": "preview_category_6",
+      "keywords": [
+        "安装",
+        "部署",
+        "调试",
+        "初始化"
+      ]
+    },
+    {
+      "label": "疑难问题排查",
+      "value": "preview_category_7",
+      "keywords": [
+        "故障",
+        "异常",
+        "掉线",
+        "卡顿",
+        "蓝屏",
+        "排查",
+        "报错",
+        "失效",
+        "无法唤醒",
+        "无法重启"
+      ]
+    },
+    {
+      "label": "基础维护与配置",
+      "value": "preview_category_8",
+      "keywords": [
+        "配置",
+        "升级",
+        "维护",
+        "优化",
+        "清洗"
+      ]
+    },
+    {
+      "label": "常规咨询答疑",
+      "value": "preview_category_9",
+      "keywords": [
+        "咨询",
+        "答疑",
+        "询问"
+      ]
+    }
+  ],
+  "completion_status_options": [
+    "已解决",
+    "未解决",
+    "待跟进",
+    "未回复"
+  ],
+  "fallback": {
+    "label": "其他",
+    "value": "preview_other",
+    "custom_text": "远程技术支持"
+  }
+}

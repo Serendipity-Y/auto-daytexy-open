@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}客户名称 · 工作中台{% endblock %}
+{% block content %}
+<section class="page-heading">
+  <div><p class="eyebrow">提交前核对</p><h1>客户名称映射</h1></div>
+</section>
+<p>将日报中的简称对应到准确的 CRM 正式客户名称。保存后影响后续客户查找；撤销后恢复按日报原名称查找。</p>
+<p class="muted">候选名称仅来自本机已有映射，未查询 CRM。大学下属院系或部门必须逐项核对；新增名称仍需在提交预检中确认真实存在。</p>
+{% if saved %}<p role="status">客户映射已更新。</p>{% endif %}
+{% if error %}<p role="alert">{{ error }}</p>{% endif %}
+{% macro security_fields(action, key='') %}
+<input type="hidden" name="{{ local_request_token_field }}" value="{{ local_request_token }}">
+<input type="hidden" name="revision" value="{{ revision }}">
+<input type="hidden" name="action" value="{{ action }}">
+<input type="hidden" name="key" value="{{ key }}">
+{% endmacro %}
+{% macro confirmation_fields() %}
+<p><label><input type="checkbox" name="confirm_target" value="yes" required> 我已核对此正式客户名称，确认保存此对应关系</label></p>
+<p><label><input type="checkbox" name="confirm_department" value="yes"> 如为大学下属单位，我已确认具体院系或部门</label></p>
+{% endmacro %}
+<section aria-labelledby="existing-aliases-title">
+<h2 id="existing-aliases-title">已保存映射（{{ rows|length }} 条）</h2>
+{% for item in rows %}
+<details class="artifact-ledger">
+  <summary>{{ item.alias }} → {{ item.primary_customer }}</summary>
+  <p>来源：{{ item.source }}。此页面修改代表新的人工确认，不代表已核验 CRM。</p>
+  {% if item.known_candidates %}<p>本机已知对应名称：{{ item.known_candidates|join('；') }}</p>{% endif %}
+  <form method="post">
+    {{ security_fields('edit', item.key) }}
+    <p><label class="service-mode-filter-form__field">日报简称 <input name="alias" value="{{ item.alias }}" maxlength="200" required></label></p>
+    <p><label class="service-mode-filter-form__field">CRM 正式客户名称 <input name="primary_customer" value="{{ item.primary_customer }}" maxlength="200" required></label></p>
+    {{ confirmation_fields() }}
+    <button class="command-button" type="submit">保存纠正</button>
+  </form>
+  <form method="post">
+    {{ security_fields('delete', item.key) }}
+    <p><label><input type="checkbox" name="confirm_delete" value="yes" required> 确认撤销“{{ item.alias }}”的映射</label></p>
+    <button class="command-button command-button--quiet" type="submit">撤销映射</button>
+  </form>
+</details>
+{% else %}<p class="empty-state">尚未保存客户名称映射。</p>{% endfor %}
+</section>
+<section aria-labelledby="new-alias-title">
+<h2 id="new-alias-title">新增映射</h2>
+<form method="post">
+  {{ security_fields('add') }}
+  <p><label class="service-mode-filter-form__field">日报简称 <input name="alias" maxlength="200" required></label></p>
+  <p><label class="service-mode-filter-form__field">CRM 正式客户名称 <input name="primary_customer" maxlength="200" required></label></p>
+  {{ confirmation_fields() }}
+  <button class="command-button" type="submit">保存映射</button>
+</form>
+</section>
+{% endblock %}

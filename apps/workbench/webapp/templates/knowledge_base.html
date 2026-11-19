@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}知识库 · 工作中台{% endblock %}
+{% block content %}
+<section class="page-heading">
+  <div>
+    <p class="eyebrow">知识资产</p>
+    <h1>知识库</h1>
+  </div>
+  <div class="page-heading__actions">
+    <button class="command-button command-button--quiet" type="button" data-knowledge-base-sync-button data-sync-mode="incremental">{% if sync_state.status == 'never' %}导入历史记录{% else %}刷新索引{% endif %}</button>
+    {% if sync_state.status != 'never' %}<button class="command-button" type="button" data-knowledge-base-sync-button data-sync-mode="full">全量复核</button>{% endif %}
+  </div>
+</section>
+
+<section class="knowledge-summary" data-knowledge-base-center data-local-token="{{ local_request_token }}" data-job-id="{{ sync_state.job_id }}" data-poll-url="{{ sync_state.poll_url }}" aria-labelledby="knowledge-summary-title">
+  <div class="knowledge-summary__intro">
+    <p class="eyebrow">{{ selected_quarter_label }}</p>
+    <h2 id="knowledge-summary-title">{{ summary_quarter_label }}已提交 {{ kpi_count }}{% if kpi_target %} / {{ kpi_target }}{% endif %} 条</h2>
+    {% if kpi_target %}<div class="knowledge-progress" aria-label="{{ summary_quarter_label }}知识库完成度 {{ kpi_percent }}%"><span style="width: {{ kpi_percent }}%"></span></div>{% endif %}
+  </div>
+  <dl class="knowledge-summary__facts">
+    {% if kpi_target %}<div><dt>季度完成度</dt><dd>{{ kpi_percent }}%</dd></div>{% endif %}
+    <div><dt>历史索引</dt><dd>{{ total_indexed_count }} 条</dd></div>
+    <div><dt>同步状态</dt><dd><span class="status-text status-text--{{ sync_state.status }}"><i class="status-dot status-{{ sync_state.status }}" aria-hidden="true"></i><span data-knowledge-base-status>{{ sync_state.label }}</span></span></dd></div>
+  </dl>
+  <div class="knowledge-summary__sync">
+    {% if sync_state.completed_at %}<time data-knowledge-base-sync-time datetime="{{ sync_state.completed_at }}">最近同步：{{ sync_state.completed_at }}</time>{% endif %}
+    {% if latest_backup %}<time datetime="{{ latest_backup.created_at }}">最近全量备份：{{ latest_backup.created_at }} · {{ latest_backup.size_label }}</time>{% endif %}
+    <p class="action-message{% if sync_state.status == 'failed' %} is-error{% endif %}" data-knowledge-base-sync-message role="status" aria-live="polite">{% if sync_state.status == 'failed' %}{{ sync_state.error_summary }}{% else %}{{ sync_state.detail }}{% endif %}</p>
+  </div>
+</section>
+
+<section class="knowledge-ledger" aria-labelledby="knowledge-ledger-title">
+  <div class="section-heading">
+    <h2 id="knowledge-ledger-title">{{ selected_quarter_label }}记录</h2>
+    <span>{{ kpi_count }} 条</span>
+  </div>
+  <nav class="quarter-filter" aria-label="知识库季度筛选">
+    {% for filter in quarter_filters %}
+      <a class="quarter-filter__item{% if filter.active %} is-active{% endif %}" href="{{ filter.url }}">{{ filter.label }}<span>{{ filter.count }}</span></a>
+    {% endfor %}
+  </nav>
+
+  {% if pages %}
+    <div class="table-wrap table-wrap--surface">
+      <table class="knowledge-table">
+        <thead><tr><th>创建日期</th><th>知识库标题</th><th>所属空间</th><th>最后修改</th><th>原文</th></tr></thead>
+        <tbody>
+          {% for page in pages %}
+            <tr>
+              <td data-label="创建日期"><time datetime="{{ page.created_at }}">{{ page.created_date }}</time></td>
+              <td data-label="知识库标题"><a class="knowledge-table__title" href="{{ page.page_url }}" target="_blank" rel="noopener noreferrer">{{ page.title }}</a></td>
+              <td data-label="所属空间">{{ page.space_name or page.space_key or '—' }}</td>
+              <td data-label="最后修改"><time datetime="{{ page.modified_at }}">{{ page.modified_date }}</time></td>
+              <td data-label="原文"><a href="{{ page.page_url }}" target="_blank" rel="noopener noreferrer">打开</a></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% elif sync_state.status == 'never' %}
+    <p class="empty-state">尚未导入知识库历史记录。</p>
+  {% else %}
+    <p class="empty-state">该季度没有已索引的知识库记录。</p>
+  {% endif %}
+</section>
+
+<dialog class="confirm-dialog confirm-dialog--compact" data-knowledge-base-full-sync-dialog aria-labelledby="knowledge-base-full-sync-title">
+  <form method="dialog">
+    <div class="confirm-dialog__heading"><div><p class="eyebrow">本机索引保护</p><h2 id="knowledge-base-full-sync-title">确认全量复核</h2></div><button class="icon-command" type="submit" aria-label="关闭" title="关闭">×</button></div>
+    <p>将先备份本机 SQLite 索引，再读取全部可见页面元数据。只有完整成功后才清理不再可见的旧索引。</p>
+    <div class="confirm-dialog__footer"><button class="command-button command-button--quiet" type="submit">取消</button><button class="command-button" type="button" data-confirm-knowledge-base-full-sync>开始全量复核</button></div>
+  </form>
+</dialog>
+{% endblock %}

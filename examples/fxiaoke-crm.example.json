@@ -1,0 +1,34 @@
+{
+  "service_record": {
+    "start_time_field": "",
+    "local_city": "",
+    "object": "",
+    "customer_field": "",
+    "method_field": ""
+  },
+  "remote_workorder": {
+    "record_type": "",
+    "region_field": "",
+    "product_field": "",
+    "category_field": "",
+    "warranty_field": "",
+    "service_date_field": "",
+    "hours_field": "",
+    "summary_field": "",
+    "completion_status_field": "",
+    "region_label": "",
+    "region_value": "",
+    "product_label": "",
+    "product_value": "",
+    "warranty_label": "",
+    "warranty_value": ""
+  },
+  "onsite_routing": {
+    "enabled": "false",
+    "implementation_type": "",
+    "after_sales_type": "",
+    "project_field": "",
+    "workflow_status_field": "",
+    "executing_state_field": ""
+  }
+}

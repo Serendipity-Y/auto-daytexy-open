@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}工作中台{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  <script defer src="{{ url_for('static', filename='app.js') }}"></script>
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header__inner">
+      <a class="brand" href="{{ url_for('web.calendar_page') }}" aria-label="工作中台首页">
+        <span class="brand__tiles" aria-hidden="true"><span>工</span><span>作</span><span>中</span><span>台</span></span>
+      </a>
+      <nav class="primary-nav" aria-label="主导航">
+        <a class="primary-nav__item{% if active_page in ['calendar', 'jobs', 'artifacts'] %} is-active{% endif %}" href="{{ url_for('web.calendar_page') }}">日报管理</a>
+        <a class="primary-nav__item{% if active_page == 'knowledge_base' %} is-active{% endif %}" href="{{ url_for('web.knowledge_base_page') }}">知识库</a>
+        <a class="primary-nav__item{% if active_page == 'customer_aliases' %} is-active{% endif %}" href="{{ url_for('web.customer_aliases_page') }}">客户名称</a>
+      </nav>
+    </div>
+  </header>
+  <main class="page-shell" id="main-content">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

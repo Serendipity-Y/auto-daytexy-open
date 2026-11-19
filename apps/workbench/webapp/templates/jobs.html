@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}任务 · 工作中台{% endblock %}
+{% block content %}
+<section class="page-heading">
+  <div><p class="eyebrow">执行账本</p><h1>任务</h1></div>
+  <span class="phase-label">单任务执行</span>
+</section>
+{% if jobs %}
+<div class="table-wrap table-wrap--surface" data-job-center data-local-token="{{ local_request_token }}" data-focus-job="{{ focus_job_id }}">
+  <table>
+    <thead><tr><th>任务编号</th><th>动作</th><th>日期</th><th>客户</th><th>状态</th><th>创建时间</th><th>结果与操作</th></tr></thead>
+    <tbody>
+    {% for job in jobs %}
+      {% set review_payload = job.request_payload.get('payload') %}
+      {% if review_payload is not mapping %}{% set review_payload = {} %}{% endif %}
+      <tr id="job-{{ job.job_id }}" data-job-row data-job-id="{{ job.job_id }}" data-job-api="{{ url_for('web.job_api', job_id=job.job_id) }}" data-job-status="{{ job.status }}" data-job-polling="{{ 'true' if job.is_polling else 'false' }}" data-job-action="{{ job.action }}" data-report-date="{{ job.report_date }}" data-customer="{{ job.customer }}" data-hours="{{ job.request_payload.hours if job.request_payload.hours is not none else '' }}" data-content-digest="{{ job.request_payload.content_digest or '' }}" data-service-category="{{ review_payload.get('service_category', '') }}" data-completion-status="{{ review_payload.get('completion_status', '') }}">
+        <td data-label="任务编号"><code>{{ job.job_id }}</code></td>
+        <td data-label="动作">{{ job.action_label }}</td>
+        <td data-label="日期">{{ job.report_date or '—' }}</td>
+        <td data-label="客户">{{ job.customer or '—' }}</td>
+        <td data-label="状态"><span class="status-code status-code--{{ job.status }}" data-job-status-label>{{ job.status_label }}</span></td>
+        <td data-label="创建时间">{{ job.created_at }}</td>
+        <td data-label="结果与操作">
+          <p class="job-error" data-job-error>{{ job.error_summary or '—' }}</p>
+          {% if job.result_payload.differences %}
+          <details class="job-progress"><summary>已有工单与本次内容的差异</summary>
+            <p>请先复核已有工单；此处不会修改 CRM，也不会自动新建重复工单。</p>
+            <table><thead><tr><th>字段</th><th>本次期望</th><th>CRM 当前</th></tr></thead><tbody>
+            {% for difference in job.result_payload.differences %}<tr><td>{{ difference.label or difference.field }}</td><td>{{ difference.expected }}</td><td>{{ difference.observed }}</td></tr>{% endfor %}
+            </tbody></table>
+          </details>
+          {% endif %}
+          {% if job.progress_log %}<details class="job-progress"><summary>执行进度</summary><pre data-job-progress>{{ job.progress_log|join('\n') }}</pre></details>{% endif %}
+          {% if job.can_retry or job.can_delete or job.is_polling %}
+            <div class="job-commands">
+              {% if job.can_retry %}<button class="small-command" type="button" data-retry-mode="background">后台重试</button>{% endif %}
+              {% if job.can_retry %}<button class="small-command small-command--quiet" type="button" data-retry-mode="visible">显示浏览器重试</button>{% endif %}
+              <button class="small-command small-command--quiet" type="button" data-delete-job{% if not job.can_delete %} hidden{% endif %}>删除任务</button>
+            </div>
+          {% elif job.verification_only %}
+            <a class="text-link" href="{{ url_for('web.day_detail', date=job.report_date) }}">前往日期详情复核</a>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}<p class="empty-state empty-state--large">暂无任务记录。</p>{% endif %}
+{% include "_pagination.html" %}
+
+<dialog class="confirm-dialog" data-retry-dialog aria-labelledby="retry-dialog-title">
+  <div class="confirm-dialog__header">
+    <div><p class="eyebrow">重试确认</p><h2 id="retry-dialog-title">核对原任务内容</h2></div>
+    <button class="icon-command" type="button" data-close-dialog aria-label="关闭" title="关闭">×</button>
+  </div>
+  <div class="confirm-dialog__body" data-retry-preview></div>
+  <div class="confirm-dialog__footer">
+    <button class="command-button" type="button" data-confirm-retry>确认重试</button>
+  </div>
+  <p class="action-message" data-retry-message role="status" aria-live="polite"></p>
+</dialog>
+
+<dialog class="confirm-dialog" data-delete-job-dialog aria-labelledby="delete-job-dialog-title">
+  <div class="confirm-dialog__header">
+    <div><p class="eyebrow">任务管理</p><h2 id="delete-job-dialog-title">确认删除任务</h2></div>
+    <button class="icon-command" type="button" data-close-dialog aria-label="关闭" title="关闭">×</button>
+  </div>
+  <div class="confirm-dialog__body">
+    <div class="preview-facts" data-delete-job-facts></div>
+    <p class="notice">仅删除本机 Web 任务记录。不会修改 CRM，不会删除待补交 JSONL 或失败留痕。</p>
+  </div>
+  <div class="confirm-dialog__footer">
+    <button class="command-button" type="button" data-confirm-delete-job>确认删除</button>
+  </div>
+  <p class="action-message" data-delete-job-message role="status" aria-live="polite"></p>
+</dialog>
+{% endblock %}
